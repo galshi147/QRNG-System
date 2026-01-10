@@ -57,7 +57,7 @@ graph TD
     A[DMA ISR fills rawBuffer] --> B[vProcessingTask]
     B -->|Von Neumann extractor| C[xRandomStreamBufferToMonitor]
     C --> D[vMonitorTask]
-    D -->|Health Tests (RCT, APT)| E{System Healthy?}
+    D -->|Health Tests: RCT and APT| E{System Healthy?}
     E -->|Yes| F[xRandomStreamBuffer]
     E -->|No| G[xStreamBufferReset]
     F --> H[vCommunicationTask]
