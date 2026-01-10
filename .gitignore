@@ -1,3 +1,22 @@
+# virtual environment
+.venv/
+env/
+# Object files
+*.o
+src/*.o
+
+# Executables
+qrng_system
+*.elf
+*.bin
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE folders
+.vscode/
+
 # Prerequisites
 *.d
 

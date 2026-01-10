@@ -1,0 +1,204 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/stream_buffer.h"
+
+/* This is a Wokwi simulation version of the QRNG system.
+   It simulates the behavior of the QRNG system using FreeRTOS tasks.
+   The code includes mock implementations for hardware interactions.
+
+   Terminal output for example:
+    ets Jul 29 2019 12:21:46
+    rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
+    configsip: 0, SPIWP:0xee
+    clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+    mode:DIO, clock div:2
+    load:0x3fff0030,len:1156
+    load:0x40078000,len:11456
+    ho 0 tail 12 room 4
+    load:0x40080400,len:2972
+    entry 0x400805dc
+    Starting QRNG System Simulation...
+    [UART SEND] Length: 16, CRC: 0xFF, Data: 63 35 9E 5A 59 81 31 B6 ...
+    [UART SEND] Length: 16, CRC: 0x0A, Data: B7 10 73 65 8B 87 D2 1D ...
+    [UART SEND] Length: 16, CRC: 0xEC, Data: F6 52 39 30 69 03 CC 7C ...
+    [UART SEND] Length: 16, CRC: 0xF9, Data: 6A A6 DB DF EF 86 F5 5E ...
+    [UART SEND] Length: 16, CRC: 0x06, Data: 6C 73 9F FF 50 01 B3 99 ...
+    [UART SEND] Length: 16, CRC: 0x8A, Data: C9 52 10 D2 36 F2 7E C8 ...
+
+*/
+
+
+// --- DEFINITIONS (מתוך protocol.h) ---
+#define SOF_MSB 0xAA
+#define SOF_LSB 0x55
+#define MAX_PAYLOAD_SIZE 64
+#define PACKET_TIMEOUT_MS 5000
+#define RAW_BUFFER_SIZE 64
+#define CRC8_POLYNOMIAL 0x07
+
+#define MAX_REP 10
+#define APT_MIN 40
+#define APT_MAX 90
+
+typedef enum {
+    SYSTEM_HEALTHY = 0,
+    SYSTEM_FAULT,
+} MonitorStatus_t;
+
+typedef struct __attribute__((packed)) {
+    uint8_t header_msb;
+    uint8_t header_lsb;
+    uint8_t length;
+    uint8_t payload[MAX_PAYLOAD_SIZE];
+    uint8_t crc;
+} QRNG_Packet_t;
+
+// --- GLOBAL VARIABLES ---
+StreamBufferHandle_t xRandomStreamBufferToMonitor;
+StreamBufferHandle_t xRandomStreamBuffer;
+TaskHandle_t xProcessingTaskHandle = NULL;
+uint8_t rawBuffer[RAW_BUFFER_SIZE];
+static MonitorStatus_t system_state = SYSTEM_HEALTHY;
+
+// --- UTILITY FUNCTIONS (from crc.c) ---
+uint8_t calculate_crc8_fast(uint8_t *data, uint8_t len) {
+    static const uint8_t crc8_table[256] = {
+        0x00, 0x07, 0x0E, 0x09, 0x1C, 0x1B, 0x12, 0x15, 0x38, 0x3F, 0x36, 0x31, 0x24, 0x23, 0x2A, 0x2D,
+        0x70, 0x77, 0x7E, 0x79, 0x6C, 0x6B, 0x62, 0x65, 0x48, 0x4F, 0x46, 0x41, 0x54, 0x53, 0x5A, 0x5D,
+        0xE0, 0xE7, 0xEE, 0xE9, 0xFC, 0xFB, 0xF2, 0xF5, 0xD8, 0xDF, 0xD6, 0xD1, 0xC4, 0xC3, 0xCA, 0xCD,
+        0x90, 0x97, 0x9E, 0x99, 0x8C, 0x8B, 0x82, 0x85, 0xA8, 0xAF, 0xA6, 0xA1, 0xB4, 0xB3, 0xBA, 0xBD,
+        0xC7, 0xC0, 0xC9, 0xCE, 0xDB, 0xDC, 0xD5, 0xD2, 0xFF, 0xF8, 0xF1, 0xF6, 0xE3, 0xE4, 0xED, 0xEA,
+        0xB7, 0xB0, 0xB9, 0xBE, 0xAB, 0xAC, 0xA5, 0xA2, 0x8F, 0x88, 0x81, 0x86, 0x93, 0x94, 0x9D, 0x9A,
+        0x27, 0x20, 0x29, 0x2E, 0x3B, 0x3C, 0x35, 0x32, 0x1F, 0x18, 0x11, 0x16, 0x03, 0x04, 0x0D, 0x0A,
+        0x57, 0x50, 0x59, 0x5E, 0x4B, 0x4C, 0x45, 0x42, 0x6F, 0x68, 0x61, 0x66, 0x73, 0x74, 0x7D, 0x7A,
+        0x89, 0x8E, 0x87, 0x80, 0x95, 0x92, 0x9B, 0x9C, 0xB1, 0xB6, 0xBF, 0xB8, 0xAD, 0xAA, 0xA3, 0xA4,
+        0xF9, 0xFE, 0xF7, 0xF0, 0xE5, 0xE2, 0xEB, 0xEC, 0xC1, 0xC6, 0xCF, 0xC8, 0xDD, 0xDA, 0xD3, 0xD4,
+        0x69, 0x6E, 0x67, 0x60, 0x75, 0x72, 0x7B, 0x7C, 0x51, 0x56, 0x5F, 0x58, 0x4D, 0x4A, 0x43, 0x44,
+        0x19, 0x1E, 0x17, 0x10, 0x05, 0x02, 0x0B, 0x0C, 0x21, 0x26, 0x2F, 0x28, 0x3D, 0x3A, 0x33, 0x34,
+        0x4E, 0x49, 0x40, 0x47, 0x52, 0x55, 0x5C, 0x5B, 0x76, 0x71, 0x78, 0x7F, 0x6A, 0x6D, 0x64, 0x63,
+        0x3E, 0x39, 0x30, 0x37, 0x22, 0x25, 0x2C, 0x2B, 0x06, 0x01, 0x08, 0x0F, 0x1A, 0x1D, 0x14, 0x13,
+        0xAE, 0xA9, 0xA0, 0xA7, 0xB2, 0xB5, 0xBC, 0xBB, 0x96, 0x91, 0x98, 0x9F, 0x8A, 0x8D, 0x84, 0x83,
+        0xDE, 0xD9, 0xD0, 0xD7, 0xC2, 0xC5, 0xCC, 0xCB, 0xE6, 0xE1, 0xE8, 0xEF, 0xFA, 0xFD, 0xF4, 0xF3
+    };
+    uint8_t crc = 0x00;
+    for (int i = 0; i < len; i++) {
+        crc = crc8_table[crc ^ data[i]];
+    }
+    return crc;
+}
+
+uint16_t calculate_hamming_weight(uint8_t *data, uint8_t len) {
+    uint16_t total_ones = 0;
+    for (int i = 0; i < len; i++) {
+        uint8_t n = data[i];
+        while (n > 0) {
+            n &= (n - 1);
+            total_ones++;
+        }
+    }
+    return total_ones;
+}
+
+// --- MOCK HARDWARE ---
+void hardware_uart_send(uint8_t *data, uint16_t len) {
+    printf("[UART SEND] Length: %u, CRC: 0x%02X, Data: ", data[2], data[len-1]);
+    for(int i = 0; i < data[2] && i < 8; i++) printf("%02X ", data[3+i]);
+    printf("...\n");
+}
+
+// --- TASKS ---
+
+void vDummySensorTask(void *pvParameters) {
+    while (1) {
+        // fill rawBuffer with random data
+        for (int i = 0; i < RAW_BUFFER_SIZE; i++) rawBuffer[i] = (uint8_t)rand();
+        if (xProcessingTaskHandle != NULL) xTaskNotifyGive(xProcessingTaskHandle);
+        vTaskDelay(pdMS_TO_TICKS(1000)); // sample once per second
+    }
+}
+
+void vProcessingTask(void *pvParameters) {
+    static uint8_t currentByte, bitsCounter, outBlock[16], outBlockIndex;
+    while (1) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        for (int i = 0; i < RAW_BUFFER_SIZE; i++) {
+            for (uint8_t j = 0; j < 4; j++) {
+                uint8_t bitPair = (rawBuffer[i] >> (2*j)) & 3;
+                if (bitPair == 1) { currentByte = (currentByte << 1); bitsCounter++; }
+                else if (bitPair == 2) { currentByte = (currentByte << 1) | 1; bitsCounter++; }
+
+                if (bitsCounter == 8) {
+                    outBlock[outBlockIndex++] = currentByte;
+                    currentByte = 0; bitsCounter = 0;
+                }
+                if (outBlockIndex == 16) {
+                    xStreamBufferSend(xRandomStreamBufferToMonitor, outBlock, 16, 0);
+                    outBlockIndex = 0;
+                }
+            }
+        }
+    }
+}
+
+void vMonitorTask(void *pvParameters) {
+    static uint8_t repetitionCount = 1, last_byte = 0, bytesRead[MAX_PAYLOAD_SIZE];
+    while (1) {
+        size_t n = xStreamBufferReceive(xRandomStreamBufferToMonitor, bytesRead, MAX_PAYLOAD_SIZE, portMAX_DELAY);
+        if (n == 0) { system_state = SYSTEM_FAULT; continue; }
+
+        for (int i = 0; i < n; i++) {
+            if (bytesRead[i] == last_byte) repetitionCount++;
+            else { last_byte = bytesRead[i]; repetitionCount = 1; }
+            if (repetitionCount >= MAX_REP) system_state = SYSTEM_FAULT;
+        }
+
+        uint16_t ones = calculate_hamming_weight(bytesRead, n);
+        if (ones < APT_MIN || ones > APT_MAX) system_state = SYSTEM_FAULT;
+
+        if (system_state == SYSTEM_HEALTHY) xStreamBufferSend(xRandomStreamBuffer, bytesRead, n, 0);
+        else printf("[MONITOR] Fault Detected! Stream Blocked.\n");
+    }
+}
+
+void vCommunicationTask(void *pvParameters) {
+    QRNG_Packet_t packet = { .header_msb = SOF_MSB, .header_lsb = SOF_LSB };
+    while (1) {
+        size_t n = xStreamBufferReceive(xRandomStreamBuffer, packet.payload, MAX_PAYLOAD_SIZE, portMAX_DELAY);
+        if (n > 0) {
+            packet.length = (uint8_t)n;
+            uint8_t calculated_crc = calculate_crc8_fast(packet.payload, packet.length);
+            packet.payload[packet.length] = calculated_crc;
+            hardware_uart_send((uint8_t *)&packet, 3 + packet.length + 1);
+        }
+    }
+}
+
+
+void setup() {
+    // serial intialization for printing
+    Serial.begin(115200); 
+    printf("Starting QRNG System Simulation...\n");
+
+    // 1. initialize Stream Buffers
+    xRandomStreamBufferToMonitor = xStreamBufferCreate(128, 16);
+    xRandomStreamBuffer = xStreamBufferCreate(128, 16);
+
+    // 2. create tasks
+    xTaskCreate(vProcessingTask, "PROC", 4096, NULL, 3, &xProcessingTaskHandle);
+    xTaskCreate(vMonitorTask,    "MON",  4096, NULL, 3, NULL);
+    xTaskCreate(vCommunicationTask, "COMM", 4096, NULL, 2, NULL);
+    xTaskCreate(vDummySensorTask, "SENS", 2048, NULL, 1, NULL);
+    
+    // the scheduler is already running in the background.
+    // no need to call vTaskStartScheduler().
+}
+
+void loop() {
+    // do not need yo use main loop in FreeRTOS
+    // tasks run independently.
+    vTaskDelay(pdMS_TO_TICKS(1000)); 
+}
