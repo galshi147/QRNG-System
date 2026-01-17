@@ -93,61 +93,115 @@ QRNG-System/
 ├── scripts/               # Host-side code (Python)
 │   └── host_receiver.py   # Serial data reception and verification
 │   └── stats_analysis.py  # Data visualization and statistical analysis
+│   └── test_serial.py     # Serial connection testing script
 ├── docs/                  # Documentation and explanations
 │   ├── ReadMe.md          # General project explanation and running instructions
-│   └── Physics.md         # Mathematical formalism of Single Photon attitude & Zener noise and tunneling
-│   └── Statistics.md      # Statistical analysis and results
-├── Makefile               # Build instructions for the system
-├── requirements.txt       # Python dependencies for host receiver script
+│   ├── Physics.md         # Mathematical formalism of Single Photon attitude & Zener noise and tunneling
+│   ├── Statistics.md      # Statistical analysis and results
+│   └── Simulation.md      # Simulation setup and instructions
 ├── .gitignore             # Files like .o files to ignore in git
-└── wokwi_version.c        # A copy paste version file for Wokwi simulation
+├── requirements.txt       # Python dependencies for host receiver script
+├── Makefile               # Build instructions for the system (Linux/macOS/WSL)
+├── manage.ps1             # Build instructions for the system (Windows PowerShell)
+├── diagram.json           # Set up file for Wokwi simulation
+├── wokwi_version.ino      # A copy paste version file for Wokwi simulation
+└── wokwi.toml             # A configuration file for Wokwi simulation
 ```
 > [!NOTE]
+> You can simulate this project on Wokwi by copying the contents of `wokwi_version.ino` into a new Wokwi ESP32 project and running it.
 > [[Wokwi ESP32 simulator](https://wokwi.com/projects/new/esp-idf-esp32)]
-> You can simulate this project on Wokwi by copying the contents of `wokwi_version.c` into a new Wokwi ESP32 project.
+> Further information about the simulation can be found in the `docs/Simulation.md` file.
 
 ---
 
 ## ▶️ Usage
 
-To build and run the project, follow these steps:
+### Prerequisites
 
-1. **Build the Project**:
-   - Open a terminal in the project root directory.
-   - Run the following command:
-     ```bash
-     make
-     ```
-   - Install python dependencies:
-     ```bash
-     pip install -r requirements.txt
-     ```
-     Essential packages include: 
-        - pyserial
-        - numpy
-        - scipy
-        - matplotlib
+Install Python dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-2. **Run the Executable**:
-   - After building, the executable `qrng_system` will be generated in the project root.
-   - Run the executable with:
-     ```bash
-     ./qrng_system
-     ```
+Essential packages include:
+- pyserial (serial communication)
+- numpy (numerical operations)
+- scipy (statistical analysis)
+- pyqtgraph (data visualization)
+- matplotlib (statistical plotting)
 
-3. **Host Receiver**:
-   - To receive and analyze the data on the host side, ensure you have Python installed along with the required packages listed in `requirements.txt`.
-   - Run the host receiver script:
-     ```bash
-     python scripts/host_reciever.py <port> <baudrate>
-     ```
-   - Adjust `<port>` and `<baudrate>` as necessary for your setup, default is `COM1` and `115200`.
+---
 
-4. **Clean the Build**:
-   - To remove all object files and the executable, run:
-     ```bash
-     make clean
-     ```
+### 🖥️ Native Build (Local Hardware)
+
+#### Linux / macOS:
+```bash
+# Build the project
+make
+
+# Run the executable
+./qrng_system_logic
+
+# Receive and visualize data
+python scripts/host_receiver.py
+
+# Clean build artifacts
+make clean
+```
+
+#### Windows (PowerShell):
+```powershell
+# Build the project (use WSL or MinGW)
+make
+
+# Run the executable
+.\qrng_system_logic.exe
+
+# Receive and visualize data
+python scripts/host_receiver.py
+
+# Clean Python cache
+.\manage.ps1 clean
+```
+
+> [!TIP]
+> `host_receiver.py` can take an optional CLI argument `--save-binary` to save received entropy to `quantum_entropy.bin` for further analysis.
+> In all the automated simulation setups, this flag is disabled by default.
+
+---
+
+### 🎮 Wokwi Simulation
+
+For simulating the system without physical hardware, use the appropriate command for your platform:
+
+#### Linux / macOS:
+
+```bash
+# Get instructions how to start Wokwi simulation (vs code extension required)
+make sim
+
+# Run visualizer
+make gui
+
+# Clean artifacts
+make clean
+```
+
+#### Windows (PowerShell):
+
+```powershell
+.\manage.ps1 sim    # Show simulation instructions
+.\manage.ps1 gui    # Run visualizer (default)
+.\manage.ps1 clean  # Clean Python cache
+.\manage.ps1 help   # Show help menu
+```
+>[!NOTE]
+> `.\manage.ps1` by default runs the Python visualizer assuming the Wokwi simulation is active and listening on port 4000.
+
+---
+
+> [!TIP]
+> For detailed simulation setup instructions (web-based and VS Code), see [Simulation.md](Simulation.md)
 
 ---
 

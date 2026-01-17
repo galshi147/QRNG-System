@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <Arduino.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/stream_buffer.h"
@@ -10,7 +11,7 @@
    It simulates the behavior of the QRNG system using FreeRTOS tasks.
    The code includes mock implementations for hardware interactions.
 
-   Terminal output for example:
+   Terminal output for example (when comment the Serial.write line in hardware_uart_send and uncomment the printf lines):
     ets Jul 29 2019 12:21:46
     rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
     configsip: 0, SPIWP:0xee
@@ -32,7 +33,7 @@
 */
 
 
-// --- DEFINITIONS (מתוך protocol.h) ---
+// --- DEFINITIONS (from protocol.h) ---
 #define SOF_MSB 0xAA
 #define SOF_LSB 0x55
 #define MAX_PAYLOAD_SIZE 64
@@ -105,15 +106,17 @@ uint16_t calculate_hamming_weight(uint8_t *data, uint8_t len) {
 
 // --- MOCK HARDWARE ---
 void hardware_uart_send(uint8_t *data, uint16_t len) {
-    printf("[UART SEND] Length: %u, CRC: 0x%02X, Data: ", data[2], data[len-1]);
-    for(int i = 0; i < data[2] && i < 8; i++) printf("%02X ", data[3+i]);
-    printf("...\n");
+    Serial.write(data, len);
+    // printf("[UART SEND] Length: %u, CRC: 0x%02X, Data: ", data[2], data[len-1]);
+    // for(int i = 0; i < data[2] && i < 8; i++) printf("%02X ", data[3+i]);
+    // printf("...\n");
 }
 
 // --- TASKS ---
 
 void vDummySensorTask(void *pvParameters) {
     while (1) {
+        // printf("[DEBUG] Generating noise...\n");
         // fill rawBuffer with random data
         for (int i = 0; i < RAW_BUFFER_SIZE; i++) rawBuffer[i] = (uint8_t)rand();
         if (xProcessingTaskHandle != NULL) xTaskNotifyGive(xProcessingTaskHandle);
@@ -181,6 +184,7 @@ void vCommunicationTask(void *pvParameters) {
 void setup() {
     // serial intialization for printing
     Serial.begin(115200); 
+    while (!Serial) { ; }
     printf("Starting QRNG System Simulation...\n");
 
     // 1. initialize Stream Buffers
