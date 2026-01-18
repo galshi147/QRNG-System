@@ -21,7 +21,7 @@ TARGET_NATIVE = qrng_system_logic.exe
 
 # --- WOKWI & PYTHON CONFIGURATION---
 # Path to the Python visualizer script
-VISUALIZER_SCRIPT = scripts/host_reciever.py
+VISUALIZER_SCRIPT = scripts/host_receiver.py
 # The binary file downloaded from Wokwi Browser
 FIRMWARE_BIN = qrng-firmware-esp32.bin
 
@@ -50,7 +50,7 @@ $(TARGET_NATIVE): $(OBJ)
 # We now rely on the VS Code Extension for the heavy lifting
 sim:
 	@echo "[SIM] Checking for firmware binary..."
-	@if not exist $(FIRMWARE_BIN) (echo [ERROR] $(FIRMWARE_BIN) missing! Download 'Compiled Firmware' from browser first. & exit 1)
+	@if [ ! -f $(FIRMWARE_BIN) ]; then echo "[ERROR] $(FIRMWARE_BIN) missing! Download 'Compiled Firmware' from browser first." && exit 1; fi
 	@echo "[SIM] Please start the simulation inside VS Code:"
 	@echo "      1. Open Command Palette (F1)"
 	@echo "      2. Select 'Wokwi: Start Simulator'"
@@ -61,7 +61,7 @@ sim:
 # Assumes simulation is already running in VS Code
 gui:
 	@echo "[GUI] Connecting to VS Code Simulation..."
-	python $(VISUALIZER_SCRIPT)
+	python3 $(VISUALIZER_SCRIPT)
 
 # 4. Cleanup
 clean:

@@ -36,12 +36,69 @@ def calculate_crc8(data):
         crc = CRC8_LOOKUP_TABLE[crc]
     return crc
 
+import sys
+import os
+import subprocess
+import serial
+from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtWidgets import QApplication
+from stats_analysis import StatsVisualizer
+
+# --- Helper Functions (Logic & UI) ---
+
+def get_connection_url(port=4000):
+    """
+    Logic: Determines the best connection URL based on priority.
+    1. Environment Variable (Manual)
+    2. WSL Auto-detect
+    3. Localhost (Default)
+    """
+    # 1. Manual Override
+    env_ip = os.getenv('QRNG_HOST_IP')
+    if env_ip:
+        return f'socket://{env_ip}:{port}'
+
+    # 2. WSL Auto-Detection
+    if 'WSL_DISTRO_NAME' in os.environ:
+        try:
+            cmd = "ip route show | grep default | awk '{print $3}'"
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            host_ip = result.stdout.strip()
+            if host_ip:
+                print(f"[Network] WSL Detected. Target IP: {host_ip}")
+                return f'socket://{host_ip}:{port}'
+        except Exception as e:
+            print(f"[Network] WSL detection failed ({e}). Falling back to localhost.")
+
+    # 3. Default
+    return f'socket://localhost:{port}'
+
+def print_connection_help(error_msg):
+    """
+    UI: Prints actionable advice for the user in case of failure to connect to the simulator.
+    """
+    print("\n" + "!"*60)
+    print("CONNECTION ERROR: Could not connect to Wokwi Simulator.")
+    print(f"   Details: {error_msg}")
+    print("-" * 60)
+    
+    if 'QRNG_HOST_IP' not in os.environ:
+        print("   [TIP]: Running on a different machine or WSL?")
+        print("   Set the IP of the Windows host:")
+        print("   > export QRNG_HOST_IP=192.168.1.XX  (Linux/Mac)")
+        print("   > $env:QRNG_HOST_IP='192.168.1.XX'  (Windows PowerShell)")
+    else:
+        print("   [TIP]: Check if the IP is correct and Firewall allows port 4000.")
+    print("!"*60 + "\n")
+
+
 class SerialWorker(QThread):
     data_received = pyqtSignal(list)
 
-    def __init__(self, port=PORT, baudrate=BAUDRATE, save_binary=False):
+    def __init__(self, port=None, baudrate=BAUDRATE, save_binary=False):
         super().__init__()
-        self.port, self.baudrate = port, baudrate
+        self.port = port
+        self.baudrate = baudrate
         self.running = False
         self.ser = None
         self.save_binary = save_binary
@@ -49,6 +106,7 @@ class SerialWorker(QThread):
     def run(self):
         self.running = True
         try:
+            self.port = get_connection_url()
             self.ser = serial.serial_for_url(url=self.port, baudrate=self.baudrate, timeout=1)
             print(f"Listening on {self.port} Visualizing Quantum Entropy...")
             
@@ -90,6 +148,8 @@ class SerialWorker(QThread):
                             print("CRC Error! Packet dropped.")
         except KeyboardInterrupt:
             print("\nStopping receiver...")
+        except OSError as e:
+            print_connection_help(e)
         except Exception as e:
             print(f"Error: {e}")
         finally:

@@ -1,12 +1,14 @@
 # virtual environment
 .venv/
 env/
+.venv_wsl/
+
 # Object files
 *.o
 src/*.o
 
 # Executables
-qrng_system
+qrng_system_logic.exe
 *.elf
 *.bin
 
