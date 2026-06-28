@@ -1,5 +1,7 @@
+import os
 import sys
 import serial
+import subprocess
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QApplication
 from stats_analysis import StatsVisualizer
@@ -36,13 +38,6 @@ def calculate_crc8(data):
         crc = CRC8_LOOKUP_TABLE[crc]
     return crc
 
-import sys
-import os
-import subprocess
-import serial
-from PyQt5.QtCore import QThread, pyqtSignal
-from PyQt5.QtWidgets import QApplication
-from stats_analysis import StatsVisualizer
 
 # --- Helper Functions (Logic & UI) ---
 
