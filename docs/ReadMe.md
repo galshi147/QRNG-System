@@ -109,7 +109,7 @@ QRNG-System/
 ```
 > [!NOTE]
 > You can simulate this project on Wokwi by copying the contents of `wokwi_version.ino` into a new Wokwi ESP32 project and running it.
-> [[Wokwi ESP32 simulator](https://wokwi.com/projects/new/esp-idf-esp32)]
+> [[Wokwi ESP32 simulator](https://wokwi.com/projects/new/esp32)]
 > Further information about the simulation can be found in the `docs/Simulation.md` file.
 
 ---

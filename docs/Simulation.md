@@ -9,7 +9,7 @@ This guide explains how to simulate the QRNG system using Wokwi, both in the web
 To run the simulation in your browser:
 
 1. **Navigate to Wokwi ESP32 Simulator**:
-   - Open [Wokwi ESP32 Simulator](https://wokwi.com/projects/new/esp-idf-esp32) in your browser.
+   - Open [Wokwi ESP32 Simulator](https://wokwi.com/projects/new/esp32) in your browser.
 
 2. **Copy the Simulation Code**:
    - Copy the entire contents of [wokwi_version.ino](../wokwi_version.ino) from this project.
@@ -45,7 +45,7 @@ For a more integrated development experience, you can run the simulation locally
 ### Setup Steps
 
 1. **Compile Firmware in Wokwi Web**:
-   - Open your project in [Wokwi ESP32 Simulator](https://wokwi.com/projects/new/esp-idf-esp32).
+   - Open your project in [Wokwi ESP32 Simulator](https://wokwi.com/projects/new/esp32).
    - Paste the contents of [wokwi_version.ino](../wokwi_version.ino).
    - Click **"Start Simulation"** to compile the firmware.
 
