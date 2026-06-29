@@ -6,8 +6,6 @@
 #define MAX_READ 64
 #define MAX_REP 10
 #define TIMEOUT 5000 //timeout (ms) for reading from xRandomStreamBufferToMonitor
-#define APT_MIN 40 // minimum acceptable number of 1 bits in a 16 bytes (128 bits) string
-#define APT_MAX 90 // maximum acceptable number of 1 bits in a 16 bytes (128 bits) string
 
 extern StreamBufferHandle_t xRandomStreamBufferToMonitor;
 extern StreamBufferHandle_t xRandomStreamBuffer;
@@ -48,7 +46,9 @@ void vMonitorTask(void *pvParameters){
     static uint8_t last_byte = 0;
     static uint8_t bytesRead[MAX_READ];
     while (1)
-    {        
+    {
+        system_state = SYSTEM_HEALTHY; // Reset state each iteration to allow recovery
+        
         size_t bytesReadNum = xStreamBufferReceive(
             xRandomStreamBufferToMonitor,    // which buffer to read from
             bytesRead,                      // where to store the read data
@@ -78,7 +78,10 @@ void vMonitorTask(void *pvParameters){
         }
         // APT (Adaptive Proportion Test) check
         uint16_t total_ones = calculate_hamming_weight(bytesRead, bytesReadNum);
-        if (total_ones < APT_MIN || total_ones > APT_MAX){
+        uint16_t expected_ones = bytesReadNum * 4;
+        uint16_t tolerance = (bytesReadNum * 3) / 2;
+        
+        if (total_ones < (expected_ones - tolerance) || total_ones > (expected_ones + tolerance)) {
             system_state = SYSTEM_FAULT;
         }
 

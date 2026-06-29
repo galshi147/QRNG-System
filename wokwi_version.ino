@@ -42,8 +42,6 @@
 #define CRC8_POLYNOMIAL 0x07
 
 #define MAX_REP 10
-#define APT_MIN 40
-#define APT_MAX 90
 
 typedef enum {
     SYSTEM_HEALTHY = 0,
@@ -150,6 +148,7 @@ void vProcessingTask(void *pvParameters) {
 void vMonitorTask(void *pvParameters) {
     static uint8_t repetitionCount = 1, last_byte = 0, bytesRead[MAX_PAYLOAD_SIZE];
     while (1) {
+        system_state = SYSTEM_HEALTHY;
         size_t n = xStreamBufferReceive(xRandomStreamBufferToMonitor, bytesRead, MAX_PAYLOAD_SIZE, portMAX_DELAY);
         if (n == 0) { system_state = SYSTEM_FAULT; continue; }
 
@@ -160,7 +159,10 @@ void vMonitorTask(void *pvParameters) {
         }
 
         uint16_t ones = calculate_hamming_weight(bytesRead, n);
-        if (ones < APT_MIN || ones > APT_MAX) system_state = SYSTEM_FAULT;
+        uint16_t expected_ones = n * 4;
+        uint16_t tolerance = (n * 3) / 2;
+        
+        if (ones < (expected_ones - tolerance) || ones > (expected_ones + tolerance)) system_state = SYSTEM_FAULT;
 
         if (system_state == SYSTEM_HEALTHY) xStreamBufferSend(xRandomStreamBuffer, bytesRead, n, 0);
         else printf("[MONITOR] Fault Detected! Stream Blocked.\n");
