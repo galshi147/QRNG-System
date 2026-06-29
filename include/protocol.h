@@ -24,7 +24,8 @@ uint8_t calculate_crc8(uint8_t *data, uint8_t len);
 uint8_t calculate_crc8_fast(uint8_t *data, uint8_t len);
 uint16_t calculate_hamming_weight(uint8_t *data, uint8_t len);
 
-// Function to send data over UART (to be implemented in hardware_uart.c)
+// Hardware abstraction functions (implemented in hardware_uart.c)
+void hardware_uart_init(void);
 void hardware_uart_send(uint8_t *data, uint16_t len);
 
 #endif

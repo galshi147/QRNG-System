@@ -4,7 +4,7 @@
 #include "stream_buffer.h"
 
 extern StreamBufferHandle_t xRandomStreamBufferToMonitor;
-extern uint8_t rawBuffer[RAW_BUFFER_SIZE];
+extern uint8_t rawBuffer[2][RAW_BUFFER_SIZE];
 
 /*
 * Processing Task
@@ -26,13 +26,16 @@ void vProcessingTask(void *pvParameters){
     static uint8_t bitsCounter;  // Number of bits collected for the current byte
     static uint8_t outBlock[16]; // Local Buffer to save random bytes and send them to the random buffer as a group
     static uint8_t outBlockIndex; // Index in the local output buffer
+    static uint8_t readBufferIndex = 0; // Tracks which of the two buffers to read
 
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY); // Wait until notified by the ISR
+        
+        // Process the current active buffer
         for (int i = 0; i < RAW_BUFFER_SIZE; i++){
             for (uint8_t j = 0; j < 4; j++){
-                uint8_t bitPair = (rawBuffer[i] >> (2*j)) & 3;
+                uint8_t bitPair = (rawBuffer[readBufferIndex][i] >> (2*j)) & 3;
                 switch (bitPair)
                 {
                 case 1:
@@ -58,6 +61,9 @@ void vProcessingTask(void *pvParameters){
                 }
             }
         }
+        
+        // Swap to the other buffer for the next iteration (Ping-Pong)
+        readBufferIndex = 1 - readBufferIndex; // Toggles between 0 and 1
     }
     
 }

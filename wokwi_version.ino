@@ -52,15 +52,14 @@ typedef struct __attribute__((packed)) {
     uint8_t header_msb;
     uint8_t header_lsb;
     uint8_t length;
-    uint8_t payload[MAX_PAYLOAD_SIZE];
-    uint8_t crc;
+    uint8_t payload[MAX_PAYLOAD_SIZE + 1];
 } QRNG_Packet_t;
 
 // --- GLOBAL VARIABLES ---
 StreamBufferHandle_t xRandomStreamBufferToMonitor;
 StreamBufferHandle_t xRandomStreamBuffer;
 TaskHandle_t xProcessingTaskHandle = NULL;
-uint8_t rawBuffer[RAW_BUFFER_SIZE];
+uint8_t rawBuffer[2][RAW_BUFFER_SIZE];
 static MonitorStatus_t system_state = SYSTEM_HEALTHY;
 
 // --- UTILITY FUNCTIONS (from crc.c) ---
@@ -113,22 +112,28 @@ void hardware_uart_send(uint8_t *data, uint16_t len) {
 // --- TASKS ---
 
 void vDummySensorTask(void *pvParameters) {
+    static uint8_t writeBufferIndex = 0; // Tracks which buffer the 'DMA' is filling
     while (1) {
-        // printf("[DEBUG] Generating noise...\n");
-        // fill rawBuffer with random data
-        for (int i = 0; i < RAW_BUFFER_SIZE; i++) rawBuffer[i] = (uint8_t)rand();
+        // fill the current write buffer with random data
+        for (int i = 0; i < RAW_BUFFER_SIZE; i++) rawBuffer[writeBufferIndex][i] = (uint8_t)rand();
+        
         if (xProcessingTaskHandle != NULL) xTaskNotifyGive(xProcessingTaskHandle);
+        
+        // Swap to the other buffer for the next capture (Ping-Pong)
+        writeBufferIndex = 1 - writeBufferIndex;
+        
         vTaskDelay(pdMS_TO_TICKS(1000)); // sample once per second
     }
 }
 
 void vProcessingTask(void *pvParameters) {
     static uint8_t currentByte, bitsCounter, outBlock[16], outBlockIndex;
+    static uint8_t readBufferIndex = 0; // Tracks which buffer to read
     while (1) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         for (int i = 0; i < RAW_BUFFER_SIZE; i++) {
             for (uint8_t j = 0; j < 4; j++) {
-                uint8_t bitPair = (rawBuffer[i] >> (2*j)) & 3;
+                uint8_t bitPair = (rawBuffer[readBufferIndex][i] >> (2*j)) & 3;
                 if (bitPair == 1) { currentByte = (currentByte << 1); bitsCounter++; }
                 else if (bitPair == 2) { currentByte = (currentByte << 1) | 1; bitsCounter++; }
 
@@ -142,6 +147,7 @@ void vProcessingTask(void *pvParameters) {
                 }
             }
         }
+        readBufferIndex = 1 - readBufferIndex; // Swap after processing the block
     }
 }
 

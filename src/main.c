@@ -7,11 +7,12 @@
 StreamBufferHandle_t xRandomStreamBufferToMonitor;
 StreamBufferHandle_t xRandomStreamBuffer;
 
-uint8_t rawBuffer[64]; // Buffer for the DMA filled by the ISR with raw ADC data
+// Double-buffer (Ping-Pong) for the DMA filled by the ISR with raw ADC data
+uint8_t rawBuffer[2][RAW_BUFFER_SIZE];
 
 int main(void) {
-    // 1. hardware reset - imaginary functions (ADC, DMA, UART)
-    // hardware_init();
+    // 1. Hardware Initialization
+    hardware_uart_init();
 
     // 2. initiate Stream Buffers
     // Buffer linking processing to monitoring (size 128 bytes, wake threshold 16)
