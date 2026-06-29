@@ -180,14 +180,10 @@ For simulating the system without physical hardware, use the appropriate command
 #### Linux / macOS:
 
 ```bash
-# Get instructions how to start Wokwi simulation (vs code extension required)
-make sim
-
-# Run visualizer
-make gui
-
-# Clean artifacts
-make clean
+make sim # Get instructions how to start Wokwi simulation (vs code extension required)
+make gui # Run visualizer
+make clean # Clean artifacts
+make help # Show help menu
 ```
 
 #### Windows (PowerShell):
@@ -195,7 +191,7 @@ make clean
 ```powershell
 .\manage.ps1 sim    # Show simulation instructions
 .\manage.ps1 gui    # Run visualizer
-.\manage.ps1 clean  # Clean Python cache
+.\manage.ps1 clean  # Clean artifacts
 .\manage.ps1 help   # Show help menu
 ```
 >[!NOTE]
