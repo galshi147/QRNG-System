@@ -98,14 +98,20 @@ class SerialWorker(QThread):
         self.ser = None
         self.save_binary = save_binary
 
+    def stop(self):
+        self.running = False
+
     def run(self):
         self.running = True
+        bin_file = None
         try:
+            if self.save_binary:
+                bin_file = open("quantum_entropy.bin", "ab")
             self.port = get_connection_url()
             self.ser = serial.serial_for_url(url=self.port, baudrate=self.baudrate, timeout=1)
             print(f"Listening on {self.port} Visualizing Quantum Entropy...")
             
-            while True:
+            while self.running:
                 # 1. Synchronize on Header
                 raw_byte = self.ser.read(1)
                 if not raw_byte:
@@ -134,9 +140,8 @@ class SerialWorker(QThread):
                         if calculate_crc8(payload) == received_crc:
                             print(f"Successfully received {length} random bytes.")
                             # optional: Save to binary file for further statistical analysis
-                            if self.save_binary:
-                                with open("quantum_entropy.bin", "ab") as f:
-                                    f.write(payload)
+                            if bin_file:
+                                bin_file.write(payload)
                             # 4. Update visualizer
                             self.data_received.emit(list(payload))
                         else:
@@ -148,6 +153,8 @@ class SerialWorker(QThread):
         except Exception as e:
             print(f"Error: {e}")
         finally:
+            if bin_file:
+                bin_file.close()
             if self.ser is not None and self.ser.is_open:
                 self.ser.close()
 
@@ -163,6 +170,7 @@ if __name__ == "__main__":
     worker = SerialWorker(PORT, BAUDRATE, save_binary=save_binary)
     worker.data_received.connect(vizualizer.handle_new_data)
     worker.start()
+    app.aboutToQuit.connect(worker.stop)
     
     sys.exit(app.exec_())
     

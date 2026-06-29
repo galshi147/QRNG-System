@@ -1,6 +1,8 @@
 import serial
 import time
-PORT = 'rfc2217://localhost:4000'
+from host_receiver import get_connection_url
+
+PORT = get_connection_url()
 BAUDRATE = 115200
 
 # Simple script to read and display raw data from the specified serial port

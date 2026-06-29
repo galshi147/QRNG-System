@@ -2,13 +2,13 @@ import numpy as np
 from scipy import stats
 import pyqtgraph as pg
 from PyQt5 import QtWidgets, QtCore
-import sys
+import collections
 
 class StatsVisualizer(QtWidgets.QWidget):
     def __init__(self, max_samples=5000):
         super().__init__()
-        self.data = []
         self.max_samples = max_samples
+        self.data = collections.deque(maxlen=self.max_samples)
         self.bins = 256
         
         self.layout = QtWidgets.QVBoxLayout(self)
@@ -46,8 +46,6 @@ class StatsVisualizer(QtWidgets.QWidget):
     def handle_new_data(self, new_bytes):
         self.data.extend(new_bytes)
         print(f"Buffer size: {len(self.data)} / {self.max_samples}")
-        if len(self.data) > self.max_samples:
-            self.data = self.data[-self.max_samples:]
 
     def calculate_metrics(self):
         if len(self.data) < 50:
