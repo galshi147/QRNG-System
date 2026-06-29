@@ -31,11 +31,12 @@ void vCommunicationTask(void *pvParameters) {
             packet.length = (uint8_t)bytesRead;
 
             // calculate CRC on the data (ensures the computer detects corruption)
-            packet.crc = calculate_crc8_fast(packet.payload, packet.length);
+            uint8_t calculated_crc = calculate_crc8_fast(packet.payload, packet.length);
+            packet.payload[packet.length] = calculated_crc;
 
             // send the complete packet over UART 
-            // 3 bytes of Header+Len, plus the length of the Payload, plus 1 bytes of CRC
-            uint16_t totalSize =  PACKET_OVERHEAD_SIZE + packet.length;
+            // 3 bytes of Header+Len, plus the length of the Payload, plus 1 byte of CRC (PACKET_OVERHEAD_SIZE = 4)
+            uint16_t totalSize = PACKET_OVERHEAD_SIZE + packet.length;
             hardware_uart_send((uint8_t *)&packet, totalSize);
         }
         

@@ -16,8 +16,7 @@ typedef struct __attribute__((packed)) {
     uint8_t header_msb;     // 0xAA
     uint8_t header_lsb;     // 0x55
     uint8_t length;         // length of payload
-    uint8_t payload[MAX_PAYLOAD_SIZE]; 
-    uint8_t crc;           // Checksum validation
+    uint8_t payload[MAX_PAYLOAD_SIZE + 1]; // +1 room for dynamically placed CRC
 } QRNG_Packet_t;
 
 
