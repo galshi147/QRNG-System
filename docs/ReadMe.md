@@ -134,6 +134,9 @@ Essential packages include:
 
 ### 🖥️ Native Build (Local Hardware)
 
+> [!NOTE]
+> Building natively generates the `qrng_system_logic` executable. This is used strictly for fast, local unit testing of the core C logic (like the CRC and von Neumann algorithms) without needing the ESP32 hardware simulator. **It is not used during the Wokwi simulation.**
+
 #### Linux / macOS:
 ```bash
 # Build the project
@@ -143,9 +146,9 @@ make
 ./qrng_system_logic
 
 # Receive and visualize data
-python scripts/host_receiver.py
+python3 scripts/host_receiver.py
 
-# Clean build artifacts
+# Clean build artifacts and Python cache
 make clean
 ```
 
@@ -160,7 +163,7 @@ make
 # Receive and visualize data
 python scripts/host_receiver.py
 
-# Clean Python cache
+# Clean build artifacts and Python cache
 .\manage.ps1 clean
 ```
 
@@ -191,12 +194,12 @@ make clean
 
 ```powershell
 .\manage.ps1 sim    # Show simulation instructions
-.\manage.ps1 gui    # Run visualizer (default)
+.\manage.ps1 gui    # Run visualizer
 .\manage.ps1 clean  # Clean Python cache
 .\manage.ps1 help   # Show help menu
 ```
 >[!NOTE]
-> `.\manage.ps1` by default runs the Python visualizer assuming the Wokwi simulation is active and listening on port 4000.
+> `.\manage.ps1` by default runs the build process (compiles native logic). To run the python visualizer assuming the Wokwi simulation is active and listening on port 4000, specify the `gui` target.
 
 ---
 

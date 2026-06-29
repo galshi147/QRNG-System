@@ -34,10 +34,12 @@ FIRMWARE_BIN = qrng-firmware-esp32.bin
 # - help  - Provides information about the available targets and their usage.
 # The `.PHONY` directive ensures that these targets are not treated as files,
 # preventing conflicts with files of the same name in the project directory.
-.PHONY: all clean sim gui help
+.PHONY: all build clean sim gui help
 
 # 1. Default: Build the local logic tester
 all: $(TARGET_NATIVE)
+
+build: all
 
 $(TARGET_NATIVE): $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS)
@@ -55,7 +57,7 @@ sim:
 	@echo "      1. Open Command Palette (F1)"
 	@echo "      2. Select 'Wokwi: Start Simulator'"
 	@echo "      (optional: click on diagram.json and press start simulation button)"
-	@echo "      3. Verify it is listening on Port 4000"
+	@echo "      3. Verify it is listening on Port 4000 (e.g., run 'netstat -an | grep 4000')"
 
 # 3. GUI Target: Runs the Python Receiver
 # Assumes simulation is already running in VS Code
@@ -66,13 +68,15 @@ gui:
 # 4. Cleanup
 clean:
 	rm -f src/*.o drivers/*.o *.o $(TARGET_NATIVE)
-	@echo "[CLEAN] Build artifacts removed."
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@echo "[CLEAN] Build artifacts and Python cache removed."
 
 # 5. Help Menu
 help:
 	@echo "QRNG System Makefile"
 	@echo "--------------------"
-	@echo "make all   -> Compile local C logic (for unit testing)"
-	@echo "make sim   -> Show instructions for starting VS Code Sim"
-	@echo "make gui   -> Run Python Visualizer (connects to Port 4000)"
-	@echo "make clean -> Remove object files and executables"
+	@echo "make all / build -> Compile local C logic (for unit testing) (Default)"
+	@echo "make sim         -> Show instructions for starting VS Code Sim"
+	@echo "make gui         -> Run Python Visualizer (connects to Port 4000)"
+	@echo "make clean       -> Remove build artifacts and Python cache"

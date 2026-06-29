@@ -51,7 +51,7 @@ def get_connection_url(port=4000):
     # 1. Manual Override
     env_ip = os.getenv('QRNG_HOST_IP')
     if env_ip:
-        return f'socket://{env_ip}:{port}'
+        return f'rfc2217://{env_ip}:{port}'
 
     # 2. WSL Auto-Detection
     if 'WSL_DISTRO_NAME' in os.environ:
@@ -61,12 +61,12 @@ def get_connection_url(port=4000):
             host_ip = result.stdout.strip()
             if host_ip:
                 print(f"[Network] WSL Detected. Target IP: {host_ip}")
-                return f'socket://{host_ip}:{port}'
+                return f'rfc2217://{host_ip}:{port}'
         except Exception as e:
             print(f"[Network] WSL detection failed ({e}). Falling back to localhost.")
 
     # 3. Default
-    return f'socket://localhost:{port}'
+    return f'rfc2217://localhost:{port}'
 
 def print_connection_help(error_msg):
     """
